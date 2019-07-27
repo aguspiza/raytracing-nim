@@ -10,8 +10,11 @@ let vert = Vec3(x: 0.0f, y: 2f, z: 0f)
 let origin = Vec3(x: 0f, y: 0f, z: 0f)
 
 proc color (ray: Ray) : Vec3 =
-    if ray.hit(Sphere(o: Vec3(x: 0f, y: 0f, z: -1f), r: 0.5f)):
-        return Vec3(x: 1f, y:0f, z:0f)
+    let sphere = Sphere(o: Vec3(x: 0f, y: 0f, z: -1f), r: 0.5f)
+    let hitted = ray.hit(sphere)
+    if hitted > 0f:
+        let u = normalize(ray.pointAt(hitted) + -Vec3(x: 0f, y: 0f, z: -1f))
+        return Vec3(x: u.x + 1f, y: u.y + 1f, z: u.z + 1f)*0.5
     let unitV = ray.b.normalize()
     let t = 0.5f32 * (unitV.y + 1f)
     return (vec3Unit()*(1.0f - t)) + ((Vec3(x: 0.5f, y: 0.7f, z: 1f)*t))
@@ -45,3 +48,4 @@ when defined(tests):
     let v2 = Vec3(x: 0f, y: 1f, z:2f)
     echo v1.dot(v2)
     echo v1.cross(v2)
+    echo -vec3Unit()

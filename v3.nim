@@ -44,10 +44,10 @@ proc normalize*(vec: Vec3) : Vec3 =
 
 proc vec3Unit*() : Vec3 = Vec3(x: 1f, y: 1f, z: 1f)
 
-proc hit*(ray: Ray, s: Sphere) : bool =
+proc hit*(ray: Ray, s: Sphere) : float =
     let oc = ray.a + -s.o
     let a = ray.b.dot(ray.b)
     let b = oc.dot(ray.b) * 2f
     let c = oc.dot(oc) - s.r*s.r
     let res = b*b - 4*a*c
-    result = res > 0
+    result = if res < 0: -1f else: (-b - sqrt(res)) / (2f*a)
