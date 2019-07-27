@@ -40,7 +40,8 @@ for line in lines:
 file.flushFile()
 file.close()
 
-let v1 = Vec3(x: 0f, y: 1f, z:2f)
-let v2 = Vec3(x: 0f, y: 1f, z:2f)
-echo v1.dot(v2)
-echo v1.cross(v2)
+when defined(tests):
+    let v1 = Vec3(x: 0f, y: 1f, z:2f)
+    let v2 = Vec3(x: 0f, y: 1f, z:2f)
+    echo v1.dot(v2)
+    echo v1.cross(v2)
