@@ -29,6 +29,9 @@ const
 template `+`*(v1: Vec3, v2: Vec3): Vec3 =
     Vec3(x: v1.x + v2.x, y: v1.y + v2.y, z: v1.z + v2.z)
 
+template `-`*(v1: Vec3, v2: Vec3): Vec3 =
+    Vec3(x: v1.x - v2.x, y: v1.y - v2.y, z: v1.z - v2.z)
+
 template `-`*(v1: Vec3): Vec3 =
     Vec3(x: -v1.x, y: -v1.y, z: -v1.z)
 
@@ -37,6 +40,9 @@ template `+`*(v1: Vec3, f: float32): Vec3 =
 
 template `*`*(v1: Vec3, f: float32): Vec3 =
     Vec3(x: v1.x * f, y: v1.y * f, z: v1.z * f)
+
+template `/`*(v1: Vec3, f: float32): Vec3 =
+    Vec3(x: v1.x / f, y: v1.y / f, z: v1.z / f)
 
 template dot*(v1: Vec3, v2: Vec3 ) : float32 =
     v1.x * v2.x + v1.y * v2.y + v1.z * v2.z
@@ -64,10 +70,11 @@ proc vec3Unit*() : Vec3 = Vec3(x: 1f, y: 1f, z: 1f)
 
 proc newHitData(ray: Ray, t: float, s: Sphere) : HitData =
     let point = ray.pointAt(t)
-    result = HitData( point: point, normal: (point + -s.o) * (1f/s.r), time: t)
+    let normal = point - s.o
+    result = HitData( point: point, normal: normal / s.r, time: t)
 
-proc hit*(ray: Ray, s: Sphere, margin: MinMax = (0f, float32.high)) : Option[HitData] =
-    let oc = ray.a + -s.o
+proc hit*(ray: Ray, s: Sphere, margin: MinMax = (0.01f, float32.high)) : Option[HitData] =
+    let oc = ray.a - s.o
     let a = ray.b.dot(ray.b)
     let b = oc.dot(ray.b)
     let c = oc.dot(oc) - s.r*s.r
@@ -84,7 +91,7 @@ proc hit*(ray: Ray, s: Sphere, margin: MinMax = (0f, float32.high)) : Option[Hit
                 let hd = newHitData(ray, tplus, s)
                 result = some(hd)
  
-proc hit*(ray: Ray, list: openarray[Hitable], margin: MinMax = (0f, float32.high)) : Option[HitData] =
+proc hit*(ray: Ray, list: openarray[Hitable], margin: MinMax = (0.01f, float32.high)) : Option[HitData] =
     var closest = margin.max
     result = none(HitData)
     for h in list:
@@ -94,4 +101,7 @@ proc hit*(ray: Ray, list: openarray[Hitable], margin: MinMax = (0f, float32.high
             closest = hd.get().time
 
 proc newRay*(u: float32, v: float32) : Ray =
-    Ray(a: origin, b: scrOrigin + (hor * u) + (vert * v))
+    let uh = hor * u
+    let vv = vert * v
+    let uv = uh + vv
+    Ray(a: origin, b: scrOrigin + uv)
