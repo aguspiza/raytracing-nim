@@ -1,34 +1,39 @@
-import os, streams, strformat, math, v3, image
+import os, streams, strformat, math, v3, image, options, sequtils, random
 
 let rows : int32 = 400
 let cols : int32 = 800
+let nsamples = 100
 
-#top left
-let scrOrigin = Vec3(x: -2f, y: 1f, z: -1f)
-let hor = Vec3(x: 4f, y: 0f, z: 0f)
-let vert = Vec3(x: 0.0f, y: -2f, z: 0f)
-let origin = Vec3(x: 0f, y: 0f, z: 0f)
 
 template toRgb(v: Vec3) : Rgb = 
     (r: uint8(255.99f32 * v.x), g: uint8(255.99f32 * v.y), b: uint8(255.99f32 * v.z) )
 
-proc color (ray: Ray) : Vec3 =
-    let sphere = Sphere(o: Vec3(x: 0f, y: 0f, z: -1f), r: 0.5f)
-    let hitted = ray.hit(sphere)
-    if hitted > 0f:
-        let u = normalize(ray.pointAt(hitted) + -Vec3(x: 0f, y: 0f, z: -1f))
-        return Vec3(x: u.x + 1f, y: u.y + 1f, z: u.z + 1f)*0.5
+proc color (ray: Ray, world: openarray[Hitable]) : Vec3 =
+    let hitted = ray.hit(world)
+    if hitted.isSome:
+        let hitdata = hitted.get() 
+        return Vec3(x: hitdata.normal.x + 1f, y: hitdata.normal.y + 1f, z: hitdata.normal.z + 1f)*0.5
     let unitV = ray.b.normalize()
     let t = 0.5f * (unitV.y + 1f)
     return (vec3Unit()*(1.0f - t)) + ((Vec3(x: 0.5f, y: 0.7f, z: 1f)*t))
 
+let sphere = Sphere(o: Vec3(x: 0f, y: 0f, z: -1f), r: 0.5f)
+let sphere2 = Sphere(o: Vec3(x: 0f, y: -100.5f, z: -1f), r: 100f)
+let sphere3 = Sphere(o: Vec3(x: 1f, y: 0f, z: -1f), r: 0.5f)
+let world = [sphere, sphere2, sphere3]
+
 var pixels = newSeq[Rgb]()
 for j in 0 ..< rows:
     for i in 0 ..< cols:
-        let vec = Vec3(x: float32(i) / float32(cols), y: float32(j) / float32(rows), z: 0.2f32)
-        let ray = Ray(a: origin, b: scrOrigin + (hor * vec.x) + (vert * vec.y))
-        let col = ray.color().toRgb()
-        pixels.add col
+        var samples = newSeq[Vec3]()
+        for s in 0 ..< nsamples:
+            let u = (float32(i) + rand(1f)) / float32(cols)
+            let v = (float32(j) + rand(1f)) / float32(rows)
+            let ray = newRay(u, v)
+            samples.add(ray.color(world))
+        let col = samples.foldl( a + b ) * (1f/nsamples.float32)
+        pixels.add col.toRgb()
+        samples.clear()
 
 #write file
 let tga = newTarga(cols, rows, pixels)

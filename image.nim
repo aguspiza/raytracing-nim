@@ -29,7 +29,7 @@ iterator ritems*[T](a: seq[T]): T {.inline.} =
     yield a[i]
     assert(len(a) == L, "the length of the seq changed while iterating over it")
 
-proc clear(seq: var seq[Rgb]) =
+proc clear*[T](seq: var seq[T]) =
     seq.setLen(0)
 
 proc newTarga*(width: int32, height: int32, pixels: seq[Rgb]) : TargaImg =
