@@ -33,8 +33,10 @@ for j in 0 ..< rows:
 #write file
 let tga = newTarga(cols, rows, pixels)
 tga.writeTo("ray.tga")
-let ppm = newPpm(cols, rows, pixels)
-ppm.writeTo("ray.ppm")
+
+when defined(ppm):
+    let ppm = newPpm(cols, rows, pixels)
+    ppm.writeTo("ray.ppm")
 
 when defined(tests):
     let v1 = Vec3(x: 0f, y: 1f, z:2f)
@@ -43,6 +45,6 @@ when defined(tests):
     echo v1.cross(v2)
     echo -vec3Unit()
     echo (1u8, 2u8, 3u8).toOpenArray()
-    let b = @[ (0u8,0u8,0u8), (255u8,0u8,255u8), (0u8,255u8,255u8), (255u8,0u8,0u8), (0u8,255u8,0u8), (0u8,0u8,255u8) ]
-    newTarga(3, 2, b).writeTo("test.tga")
-    newPpm(3, 2, b).writeTo("test.ppm")
+    let b = @[ (0u8,0u8,0u8),  (0u8,255u8,255u8), (255u8,0u8,255u8), (255u8,255u8,0u8), (255u8,255u8,255u8), (255u8,0u8,0u8), (0u8,255u8,0u8), (0u8,0u8,255u8) ]
+    newTarga(4, 2, b).writeTo("test.tga")
+    newPpm(4, 2, b).writeTo("test.ppm")
