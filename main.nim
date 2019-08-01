@@ -35,7 +35,7 @@ proc color (ray: Ray, world: openarray[Hitable]) : Vec3 =
     result = sky
     var maxBounces = 20
     while hitted.isSome and maxBounces > 0:
-        result = result * 0.25f
+        result = result * 0.5f
         let hitdata = hitted.get()
         let pointNormal = hitdata.point + hitdata.normal
         let randV = randInSphere()
