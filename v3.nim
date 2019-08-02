@@ -1,17 +1,29 @@
-import math, options
+import math, options, random
 
 type
     Vec3* = object
         x*, y*, z*: float32
     Ray* = object
         a*, b*: Vec3
+    ScatteredRay* = object
+      ray*: Ray
+      attenuation*: Vec3 
+    MayScatter* = concept mat
+      var ray:Ray
+      var hitdata: HitData
+      var scattered = mat.scatter(ray, hitdata)
+      scattered is Option[ScatteredRay]
+    Material* = object of RootObj
+      scatterFunc*: proc (ray: Ray, hitdata: HitData): Option[ScatteredRay]
     Sphere* = object
         o*: Vec3
         r*: float32
+        mat*: ref Material
     HitData* = object
         point*: Vec3
         normal*: Vec3
         time*: float32
+        material*: ref Material
     MinMax* = tuple[min: float32, max: float32]
     Hitable* = concept h
         var ray: Ray
@@ -28,6 +40,9 @@ const
 
 template `+`*(v1: Vec3, v2: Vec3): Vec3 =
     Vec3(x: v1.x + v2.x, y: v1.y + v2.y, z: v1.z + v2.z)
+
+template `*`*(v1: Vec3, v2: Vec3): Vec3 =
+    Vec3(x: v1.x * v2.x, y: v1.y * v2.y, z: v1.z * v2.z)
 
 template `-`*(v1: Vec3, v2: Vec3): Vec3 =
     Vec3(x: v1.x - v2.x, y: v1.y - v2.y, z: v1.z - v2.z)
@@ -71,7 +86,7 @@ proc vec3Unit*() : Vec3 = Vec3(x: 1f, y: 1f, z: 1f)
 proc newHitData(ray: Ray, t: float, s: Sphere) : HitData =
     let point = ray.pointAt(t)
     let normal = point - s.o
-    result = HitData( point: point, normal: normal / s.r, time: t)
+    result = HitData( point: point, normal: normal / s.r, time: t, material: s.mat)
 
 proc hit*(ray: Ray, s: Sphere, margin: MinMax = (0.01f, float32.high)) : Option[HitData] =
     let oc = ray.a - s.o
@@ -105,3 +120,20 @@ proc newRay*(u: float32, v: float32) : Ray =
     let vv = vert * v
     let uv = uh + vv
     Ray(a: origin, b: scrOrigin + uv)
+
+let unit* = vec3Unit()
+
+proc randInSphere*() : Vec3 =
+    result = Vec3()
+    while true:
+        let x = rand(1f)
+        let y = rand(1f)
+        let z = rand(1f)
+        let v = Vec3(x: x, y: y, z: z)
+        let v2 = v * 2f
+        result = v2 - unit
+        if result.sqlen() >= 1f:
+            break
+
+proc reflect*(v: Vec3, target: Vec3): Vec3 =
+    result = v - target * (v.dot(target) * 2f)
