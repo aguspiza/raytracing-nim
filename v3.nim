@@ -6,15 +6,14 @@ type
     Ray* = object
         a*, b*: Vec3
     ScatteredRay* = object
-      ray*: Ray
-      attenuation*: Vec3 
+        ray*: Ray
+        attenuation*: Vec3 
     MayScatter* = concept mat
-      var ray:Ray
-      var hitdata: HitData
-      var scattered = mat.scatter(ray, hitdata)
-      scattered is Option[ScatteredRay]
+        var ray:Ray
+        var hitdata: HitData
+        var scattered = mat.scatter(ray, hitdata)
+        scattered is Option[ScatteredRay]
     Material* = object of RootObj
-      scatterFunc*: proc (ray: Ray, hitdata: HitData): Option[ScatteredRay]
     Sphere* = object
         o*: Vec3
         r*: float32
