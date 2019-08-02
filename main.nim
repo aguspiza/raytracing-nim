@@ -22,7 +22,7 @@ proc skyColor(ray: Ray): Vec3 =
 proc color (ray: Ray, world: openarray[Hitable]) : Vec3 =
     var bounce = ray
     result = bounce.skyColor()
-    var maxBounces = 50
+    var maxBounces = 20
     var hitted = bounce.hit(world)
     while hitted.isSome and maxBounces > 0:
         let hitdata = hitted.get()
@@ -37,9 +37,10 @@ proc color (ray: Ray, world: openarray[Hitable]) : Vec3 =
           return Vec3(x: 0f, y: 0f, z: 0f)
 
 let sphere = Sphere(o: Vec3(x: 0f, y: 0f, z: -1f), r: 0.5f, mat: Lambertian(albedo: Vec3(x:0.8f, y:0.3f, z: 0.3 )))
-let sphere2 = Sphere(o: Vec3(x: 0f, y: -100.5f, z: -1f), r: 100f, mat: Lambertian(albedo: Vec3(x: 0.3f, y: 0.3f, z: 0f)))
-let sphere3 = Sphere(o: Vec3(x: 1f, y: 0f, z: -1f), r: 0.5f, mat: Metalic(albedo: Vec3(x: 0.8f, y: 0.2f, z: 0.2f)))
-let world = [sphere, sphere2, sphere3]
+let sphere2 = Sphere(o: Vec3(x: 0f, y: -100.5f, z: -1f), r: 100f, mat: Lambertian(albedo: Vec3(x: 0.8f, y: 0.8f, z: 0f)))
+let sphere3 = Sphere(o: Vec3(x: 1f, y: 0f, z: -1f), r: 0.5f, mat: Metalic(fuzzy: 1f, albedo: Vec3(x: 0.8f, y: 0.6f, z: 0.2f)))
+let sphere4 = Sphere(o: Vec3(x: -1f, y: 0f, z: -1f), r: 0.5f, mat: Metalic(fuzzy: 0.3f, albedo: Vec3(x: 0.8f, y: 0.8f, z: 0.8f)))
+let world = [sphere, sphere2, sphere3, sphere4]
 
 proc doSample(j, i: int32) : Vec3 =
     let u = (float32(i) + rand(1f)) / float32(cols)

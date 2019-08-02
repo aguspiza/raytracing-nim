@@ -5,6 +5,7 @@ type
     albedo*: Vec3
   Dielectric* = ref object of Material
   Metalic* = ref object of Material
+    fuzzy*: float32
     albedo*: Vec3
 
 method scatter*(mat: ref Material, ray: Ray, hitdata: HitData) : Option[ScatteredRay] =
@@ -20,7 +21,7 @@ method scatter*(mat: Dielectric, ray: Ray, hitdata: HitData) : Option[ScatteredR
 
 method scatter*(mat: Metalic, ray: Ray, hitdata: HitData) : Option[ScatteredRay] =
   let reflected = ray.b.normalize().reflect(hitdata.normal)
-  let scattered = ScatteredRay(ray: Ray(a: hitdata.point, b: reflected), attenuation: mat.albedo)
+  let scattered = ScatteredRay(ray: Ray(a: hitdata.point, b: reflected + randInSphere() * mat.fuzzy), attenuation: mat.albedo)
   if scattered.ray.b.dot(hitdata.normal) > 0:
     result = some(scattered)
   else:
