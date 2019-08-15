@@ -77,8 +77,8 @@ proc normalize*(vec: Vec3) : Vec3 =
     let k = 1f32 / (vec.len+0.0001f)
     result = Vec3(x: vec.x * k, y: vec.y * k, z: vec.z * k)
     #echo result, k, " ", result.len
-    assert result.len <= 1.0f
-    assert result.len > 0.99f
+    #assert result.len <= 1.0f
+    #assert result.len > 0.999f
 
 proc vec3Unit*() : Vec3 = Vec3(x: 1f, y: 1f, z: 1f)
 
@@ -148,5 +148,5 @@ proc refract*(v: Vec3, target: Vec3, niOverNt: float32): Option[Vec3] =
 
 proc schlick* (cosine: float32, refraction: float32) : float32 =
   let r0 = (1f - refraction) / (1f + refraction)
-  let r = r0+r0
+  let r = r0*r0
   result = r + (1f - r) * pow((1f - cosine), 5)

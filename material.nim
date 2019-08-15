@@ -27,19 +27,19 @@ method scatter*(mat: Dielectric, ray: Ray, hitdata: HitData) : Option[ScatteredR
     niOverNt = mat.refraction
     cosine = cosine * -1f * mat.refraction
   let refracted = ray.b.refract(outNormal, niOverNt)
-  var refractProbability = 1f
-  let scatteredReflect = ScatteredRay(ray: Ray(a: hitdata.point, b: reflected), attenuation: unit)
-  result = some(scatteredReflect)
   if refracted.isSome:
-    refractProbability = cosine.schlick(mat.refraction)
+    let refractProbability = cosine.schlick(mat.refraction)
     if rand(1f) > refractProbability:
-      let scattered = ScatteredRay(ray: Ray(a: hitdata.point, b: refracted.get()), attenuation: unit)
-      result = some(scattered)    
+      let scatteredRefract = ScatteredRay(ray: Ray(a: hitdata.point, b: refracted.get()), attenuation: unit)
+      return some(scatteredRefract)
+  let scatteredReflect = ScatteredRay(ray: Ray(a: hitdata.point, b: reflected), attenuation: unit)
+  result = some(scatteredReflect) 
+
 
 method scatter*(mat: Metalic, ray: Ray, hitdata: HitData) : Option[ScatteredRay] =
   let reflected = ray.b.normalize().reflect(hitdata.normal)
   let scattered = ScatteredRay(ray: Ray(a: hitdata.point, b: reflected + randInSphere() * mat.fuzzy), attenuation: mat.albedo)
-  if scattered.ray.b.dot(hitdata.normal) > 0:
+  if scattered.ray.b.dot(hitdata.normal) > 0.001:
     result = some(scattered)
   else:
     result = none(ScatteredRay)
