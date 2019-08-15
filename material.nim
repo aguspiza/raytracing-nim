@@ -9,7 +9,7 @@ type
     fuzzy*: float32
     albedo*: Vec3
 
-method scatter*(mat: ref Material, ray: Ray, hitdata: HitData) : Option[ScatteredRay] =
+method scatter*(mat: ref Material, ray: Ray, hitdata: HitData) : Option[ScatteredRay] {.base.} =
   echo mat.repr
 
 method scatter*(mat: Lambertian, ray: Ray, hitdata: HitData) : Option[ScatteredRay] =
