@@ -136,3 +136,17 @@ proc randInSphere*() : Vec3 =
 
 proc reflect*(v: Vec3, target: Vec3): Vec3 =
     result = v - target * (v.dot(target) * 2f)
+
+proc refract*(v: Vec3, target: Vec3, niOverNt: float32): Option[Vec3] =
+    let nv = v.normalize()
+    let dt = nv.dot(target)
+    let discriminant = 1f - niOverNt * niOverNt * (1f - dt * dt)
+    if discriminant > 0:
+        result = some((nv - target*dt)*niOverNt - target*sqrt(discriminant))
+    else:
+        result = none(Vec3)
+
+proc schlick* (cosine: float32, refraction: float32) : float32 =
+  let r0 = (1f - refraction) / (1f + refraction)
+  let r = r0+r0
+  result = r + (1f - r) * pow((1f - cosine), 5)

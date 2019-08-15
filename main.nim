@@ -1,9 +1,9 @@
 import os, streams, strformat, math, v3, image, options, sequtils, random, times
 import material
 
-let rows : int32 = 400
-let cols : int32 = 800
-const nsamples = 32
+let rows : int32 = 300
+let cols : int32 = 600
+const nsamples = 64
 const hasThreadSupport = compileOption("threads")
 
 template toRgb(v: Vec3) : Rgb =
@@ -36,11 +36,12 @@ proc color (ray: Ray, world: openarray[Hitable]) : Vec3 =
         else:
           return Vec3(x: 0f, y: 0f, z: 0f)
 
-let sphere = Sphere(o: Vec3(x: 0f, y: 0f, z: -1f), r: 0.5f, mat: Lambertian(albedo: Vec3(x:0.8f, y:0.3f, z: 0.3 )))
+let sphere = Sphere(o: Vec3(x: 0f, y: 0f, z: -1f), r: 0.5f, mat: Lambertian(albedo: Vec3(x:0.1f, y:0.2f, z: 0.5f )))
 let sphere2 = Sphere(o: Vec3(x: 0f, y: -100.5f, z: -1f), r: 100f, mat: Lambertian(albedo: Vec3(x: 0.8f, y: 0.8f, z: 0f)))
-let sphere3 = Sphere(o: Vec3(x: 1f, y: 0f, z: -1f), r: 0.5f, mat: Metalic(fuzzy: 1f, albedo: Vec3(x: 0.8f, y: 0.6f, z: 0.2f)))
-let sphere4 = Sphere(o: Vec3(x: -1f, y: 0f, z: -1f), r: 0.5f, mat: Metalic(fuzzy: 0.3f, albedo: Vec3(x: 0.8f, y: 0.8f, z: 0.8f)))
-let world = [sphere, sphere2, sphere3, sphere4]
+let sphere3 = Sphere(o: Vec3(x: 1f, y: 0f, z: -1f), r: 0.5f, mat: Metalic(fuzzy: 0.3f, albedo: Vec3(x: 0.8f, y: 0.6f, z: 0.2f)))
+let sphere4 = Sphere(o: Vec3(x: -1f, y: 0f, z: -1f), r: 0.5f, mat: Dielectric(refraction: 1f))
+let sphere5 = Sphere(o: Vec3(x: -1f, y: 0f, z: -1.5f), r: -0.45f, mat: Dielectric(refraction: 1f))
+let world = [sphere, sphere2, sphere3, sphere4, sphere5]
 
 proc doSample(j, i: int32) : Vec3 =
     let u = (float32(i) + rand(1f)) / float32(cols)
