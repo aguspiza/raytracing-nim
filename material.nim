@@ -9,15 +9,20 @@ type
     fuzzy*: float32
     albedo*: Vec3
 
-method scatter*(mat: ref Material, ray: Ray, hitdata: HitData) : Option[ScatteredRay] {.base.} =
+method scatter*(mat: ref Material, ray: Ray, hitdata: HitData) : Option[Ray] {.base.} =
   echo mat.repr
 
-method scatter*(mat: Lambertian, ray: Ray, hitdata: HitData) : Option[ScatteredRay] =
+method attenuation*(mat: ref Material) : Vec3{.base.} =
+  unit
+
+method scatter*(mat: Lambertian, ray: Ray, hitdata: HitData) : Option[Ray] =
   let target = (hitdata.point + hitdata.normal) + randInSphere()
-  let scattered = ScatteredRay(ray: Ray(a: hitdata.point, b: target - hitdata.point), attenuation: mat.albedo)
+  let scattered = Ray(a: hitdata.point, b: target - hitdata.point)
   result = some(scattered)
 
-method scatter*(mat: Dielectric, ray: Ray, hitdata: HitData) : Option[ScatteredRay] =
+method attenuation*(mat: Lambertian) : Vec3 = mat.albedo
+
+method scatter*(mat: Dielectric, ray: Ray, hitdata: HitData) : Option[Ray] =
   let reflected = ray.b.reflect(hitdata.normal)
   var outNormal = hitdata.normal
   var niOverNt = 1f / mat.refraction
@@ -30,17 +35,19 @@ method scatter*(mat: Dielectric, ray: Ray, hitdata: HitData) : Option[ScatteredR
   if refracted.isSome:
     let refractProbability = cosine.schlick(mat.refraction)
     if rand(1f) > refractProbability:
-      let scatteredRefract = ScatteredRay(ray: Ray(a: hitdata.point, b: refracted.get()), attenuation: unit)
+      let scatteredRefract = Ray(a: hitdata.point, b: refracted.get())
       return some(scatteredRefract)
-  let scatteredReflect = ScatteredRay(ray: Ray(a: hitdata.point, b: reflected), attenuation: unit)
+  let scatteredReflect = Ray(a: hitdata.point, b: reflected)
   result = some(scatteredReflect) 
 
+method attenuation*(mat: Dielectric) : Vec3 = unit
 
-method scatter*(mat: Metalic, ray: Ray, hitdata: HitData) : Option[ScatteredRay] =
+method scatter*(mat: Metalic, ray: Ray, hitdata: HitData) : Option[Ray] =
   let reflected = ray.b.normalize().reflect(hitdata.normal)
-  let scattered = ScatteredRay(ray: Ray(a: hitdata.point, b: reflected + randInSphere() * mat.fuzzy), attenuation: mat.albedo)
-  if scattered.ray.b.dot(hitdata.normal) > 0.001:
+  let scattered = Ray(a: hitdata.point, b: reflected + randInSphere() * mat.fuzzy)
+  if scattered.b.dot(hitdata.normal) > 0:
     result = some(scattered)
   else:
-    result = none(ScatteredRay)
+    result = none(Ray)
 
+method attenuation*(mat: Metalic) : Vec3 = mat.albedo

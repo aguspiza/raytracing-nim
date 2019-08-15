@@ -3,7 +3,8 @@ import material
 
 let rows : int32 = 300
 let cols : int32 = 600
-const nsamples = 64
+const nsamples = 32
+const maxBounces = 16
 const hasThreadSupport = compileOption("threads")
 
 template toRgb(v: Vec3) : Rgb =
@@ -11,6 +12,9 @@ template toRgb(v: Vec3) : Rgb =
     let g = uint8(255.99f32 * v.y)
     let b = uint8(255.99f32 * v.z)
     (r: r, g: g, b: b)
+
+proc toGamma2(v: Vec3) : Vec3 =
+    Vec3(x: v.x.sqrt, y: v.y.sqrt, z: v.z.sqrt)
 
 proc skyColor(ray: Ray): Vec3 =
     let unitV = ray.b.normalize()
@@ -20,27 +24,30 @@ proc skyColor(ray: Ray): Vec3 =
     result = start + final
 
 proc color (ray: Ray, world: openarray[Hitable]) : Vec3 =
-    var bounce = ray
-    result = bounce.skyColor()
-    var maxBounces = 20
-    var hitted = bounce.hit(world)
-    while hitted.isSome and maxBounces > 0:
+    var newRay = ray
+    var bounces = 0
+    result = vec3Unit()
+    while true:
+        let hitted = newRay.hit(world)
+        if not hitted.isSome:
+          break
         let hitdata = hitted.get()
-        let scattered = hitdata.material.scatter(bounce, hitdata)
-        if scattered.isSome:
-          let scatterData = scattered.get()
-          result = result * scatterData.attenuation
-          bounce = scatterData.ray
-          hitted = bounce.hit(world)
-          dec maxBounces
+        inc bounces
+        result = result * hitdata.material.attenuation()
+        let scattered = hitdata.material.scatter(newRay, hitdata)
+        if bounces < maxBounces and scattered.isSome:
+          newRay = scattered.get()
         else:
           return Vec3(x: 0f, y: 0f, z: 0f)
 
-let sphere = Sphere(o: Vec3(x: 0f, y: 0f, z: -1f), r: 0.5f, mat: Lambertian(albedo: Vec3(x:0.1f, y:0.2f, z: 0.5f )))
-let sphere2 = Sphere(o: Vec3(x: 0f, y: -100.5f, z: -1f), r: 100f, mat: Lambertian(albedo: Vec3(x: 0.8f, y: 0.8f, z: 0f)))
-let sphere3 = Sphere(o: Vec3(x: 1f, y: 0f, z: -1f), r: 0.5f, mat: Metalic(fuzzy: 0.3f, albedo: Vec3(x: 0.8f, y: 0.6f, z: 0.2f)))
-let sphere4 = Sphere(o: Vec3(x: -1f, y: 0f, z: -1f), r: 0.5f, mat: Dielectric(refraction: 1f))
-let sphere5 = Sphere(o: Vec3(x: -1f, y: 0f, z: -1.5f), r: -0.45f, mat: Dielectric(refraction: 1f))
+    result = result * newRay.skyColor()
+
+let sphere = Sphere(o: Vec3(x: 0f, y: 0f, z: -1f), r: 0.5f, mat: Lambertian(albedo: Vec3(x: 0.1f, y: 0.2f, z: 0.5f )))
+let sphere2 = Sphere(o: Vec3(x: 0f, y: -100.5f, z: -1f), r: 100f, mat: Lambertian(albedo: Vec3(x: 0.8f, y: 0.8f, z: 0.0f)))
+let sphere3 = Sphere(o: Vec3(x: 1f, y: 0f, z: -1f), r: 0.5f, mat: Metalic(fuzzy: 0.1f, albedo: Vec3(x: 0.8f, y: 0.6f, z: 0.2f)))
+let sphere4 = Sphere(o: Vec3(x: -1f, y: 0f, z: -1f), r: 0.5f, mat: Dielectric(refraction: 1.5f))
+let sphere5 = Sphere(o: Vec3(x: -1f, y: 0f, z: -1f), r: -0.45f, mat: Dielectric(refraction: 1.5f))
+#let world = [sphere, sphere2]
 let world = [sphere, sphere2, sphere3, sphere4, sphere5]
 
 proc doSample(j, i: int32) : Vec3 =
@@ -69,14 +76,14 @@ var pixels = newSeq[Rgb]()
 for j in 0 ..< rows:
     for i in 0 ..< cols:
         var s = 0i32
-        var r = Vec3()
+        var col = Vec3()
         while s < nsamples:
             let sm = doSample(j, i)
-            r = r + sm
+            col = col + sm
             inc s
 
-        let col = r / nsamples.float32
-        let rgb = col.toRgb()
+        col = col / nsamples.float32
+        let rgb = col.toGamma2().toRgb()
         pixels.add rgb
         if int(cpuTime()*1000) mod 15 == 0:
             stdout.write($j, "                 ", "\r")

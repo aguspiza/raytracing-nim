@@ -5,14 +5,11 @@ type
         x*, y*, z*: float32
     Ray* = object
         a*, b*: Vec3
-    ScatteredRay* = object
-        ray*: Ray
-        attenuation*: Vec3 
     MayScatter* = concept mat
         var ray:Ray
         var hitdata: HitData
         var scattered = mat.scatter(ray, hitdata)
-        scattered is Option[ScatteredRay]
+        scattered is Option[Ray]
     Material* = object of RootObj
     Sphere* = object
         o*: Vec3
