@@ -18,7 +18,7 @@ type
     HitData* = object
         point*: Vec3
         normal*: Vec3
-        time*: float32
+        distance*: float32
         material*: ref Material
     MinMax* = tuple[min: float32, max: float32]
     Hitable* = concept h
@@ -26,13 +26,21 @@ type
         var minmax: MinMax
         var hd = ray.hit(h, minmax)
         hd is Option[HitData]
+    Camera* = object
+        origin: Vec3
+        upLeftCorner: Vec3
+        hor: Vec3
+        vert: Vec3
+        u, v, w: Vec3
+        lensRadius: float32
+
 
 #top left
 const 
     scrOrigin = Vec3(x: -2f, y: 1f, z: -1f)
     hor = Vec3(x: 4f, y: 0f, z: 0f)
     vert = Vec3(x: 0.0f, y: -2f, z: 0f)
-    origin = Vec3(x: 0f, y: 0f, z: 0f)
+    origin* = Vec3(x: 0f, y: 0f, z: 0f)
 
 template `+`*(v1: Vec3, v2: Vec3): Vec3 =
     Vec3(x: v1.x + v2.x, y: v1.y + v2.y, z: v1.z + v2.z)
@@ -82,7 +90,7 @@ proc vec3Unit*() : Vec3 = Vec3(x: 1f, y: 1f, z: 1f)
 proc newHitData(ray: Ray, t: float, s: Sphere) : HitData =
     let point = ray.pointAt(t)
     let normal = point - s.o
-    result = HitData( point: point, normal: normal / s.r, time: t, material: s.mat)
+    result = HitData( point: point, normal: normal / s.r, distance: t, material: s.mat)
 
 proc hit*(ray: Ray, s: Sphere, margin: MinMax = (0.01f, float32.high)) : Option[HitData] =
     let oc = ray.a - s.o
@@ -109,7 +117,8 @@ proc hit*(ray: Ray, list: openarray[Hitable], margin: MinMax = (0.01f, float32.h
         let hd = ray.hit(h, (margin.min, closest))
         if hd.isSome:
             result = hd
-            closest = hd.get().time
+            closest = hd.get().distance
+
 
 proc newRay*(u: float32, v: float32) : Ray =
     let uh = hor * u
@@ -131,6 +140,18 @@ proc randInSphere*() : Vec3 =
         if result.sqlen() >= 1f:
             break
 
+proc randInDisk*() : Vec3 =
+    result = Vec3()
+    while true:
+        let x = rand(1f)
+        let y = rand(1f)
+        let z = 0f
+        let v = Vec3(x: x, y: y, z: z)
+        let v2 = v * 2f
+        result = v2 - Vec3(x:1f, y:1f, z: 0f)
+        if result.sqlen() >= 1f:
+            break
+
 proc reflect*(v: Vec3, target: Vec3): Vec3 =
     result = v - target * (v.dot(target) * 2f)
 
@@ -147,3 +168,42 @@ proc schlick* (cosine: float32, refraction: float32) : float32 =
   let r0 = (1f - refraction) / (1f + refraction)
   let r = r0*r0
   result = r + (1f - r) * pow((1f - cosine), 5)
+
+proc newCamera*(lookFrom: Vec3, lookAt: Vec3) : Camera =
+    let down = Vec3(x: 0f, y: 1f, z: 0f)
+    let vFov = 20f
+    let aperture = 2f
+    let aspect = 1.5f
+    let dist = lookFrom - lookAt
+    let w = dist.normalize()
+    let u = down.cross(w).normalize()
+    let v = w.cross(u)
+    let focusDist = dist.len()
+    let tetha = vFov * PI / 180
+    let halfHeight = tan(tetha/2)
+    let halfWidth = aspect * halfHeight
+    let leftCorner = lookFrom - u * halfWidth * focusDist - v * halfHeight * focusDist - w * focusDist
+    let horz = u*halfWidth*focusDist*2
+    let vertz = v*halfHeight*focusDist*2
+    result = Camera(origin: lookfrom,
+      upLeftCorner: leftCorner,
+      lensRadius: aperture/2,
+      u: u, 
+      v: v,
+      w: w,
+      hor: horz,
+      vert: vertz)
+
+proc newRay*(cam: Camera, u, v: float32) : Ray =
+    let uh = cam.hor * u
+    let vv = cam.vert * v - cam.origin
+    let uv = uh + vv
+    result = Ray(a: cam.origin, b: cam.upLeftCorner + uv)
+
+proc newRay1*(cam: Camera, u, v: float32) : Ray =
+    let rd = randInDisk() * cam.lensRadius
+    let offset = cam.u * rd.x + cam.v * rd.y
+    let uh = cam.hor * u
+    let vv = cam.vert * v - cam.origin - offset
+    let uv = uh + vv
+    result = Ray(a: cam.origin - offset, b: cam.upLeftCorner + uv)

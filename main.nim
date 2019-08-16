@@ -1,10 +1,10 @@
 import os, streams, strformat, math, v3, image, options, sequtils, random, times
 import material
 
-let rows : int32 = 300
-let cols : int32 = 600
-const nsamples = 32
-const maxBounces = 16
+let rows : int32 = 400
+let cols : int32 = 800
+const nsamples = 16
+const maxBounces = 4
 const hasThreadSupport = compileOption("threads")
 
 template toRgb(v: Vec3) : Rgb =
@@ -42,18 +42,52 @@ proc color (ray: Ray, world: openarray[Hitable]) : Vec3 =
 
     result = result * newRay.skyColor()
 
+proc randomScene() : seq[Sphere] =
+    var scene :seq[Sphere] =  @[Sphere(o: Vec3(x: 0f, y: -1000f, z: 0), r: 1000f, mat: Lambertian(albedo: Vec3(x: 0.5f, y: 0.5f, z: 0.5f )))]
+    for a in -11 ..< 11:
+        for b in -11 ..< 11:
+            let matProb = rand(1f)
+            var center = Vec3(x: a.float32+0.9f+rand(1f), y: 0.2f, z: b.float32+0.9f+rand(1f))
+            if (center - Vec3(x:4f, y: 0.2f, z:0f)).len() > 0.9f:
+                let distanceOrigin = (center - origin).len
+                center.y = center.y - 0.2f/40f * distanceOrigin
+                let mat: ref Material =
+                    if matProb < 0.8f:
+                        Lambertian(albedo: Vec3(x: rand(1f)*rand(1f), y: rand(1f)*rand(1f), z: rand(1f)*rand(1f)))
+                    elif matProb < 0.95f:
+                        Metalic(albedo: Vec3(x: 0.5f*(rand(1f)+1f), y: 0.5f*(rand(1f)+1f), z: 0.5f*(rand(1f)+1f)), fuzzy: 0.5f*rand(1f))
+                    else:
+                        Dielectric(refraction: 1.5f)
+                let sp = Sphere(o: center, r: 0.2f, mat: mat)
+                scene.add(sp)
+    scene.add(Sphere(o: Vec3(x: 0f, y: 1f, z: 0f), r: 1f, mat: Dielectric(refraction: 1.5f)))
+    scene.add(Sphere(o: Vec3(x: -4f, y: 1f, z: 0f), r: 1f, mat: Lambertian(albedo: Vec3(x: 0.4f, y: 0.2f, z: 0.1f)) ))
+    scene.add(Sphere(o: Vec3(x: 4f, y: 1f, z: 0f), r: 1f, mat: Metalic(fuzzy: 0.1f, albedo: Vec3(x: 0.7f, y: 0.6f, z: 0.5f))))
+
+    return scene
+
 let sphere = Sphere(o: Vec3(x: 0f, y: 0f, z: -1f), r: 0.5f, mat: Lambertian(albedo: Vec3(x: 0.1f, y: 0.2f, z: 0.5f )))
 let sphere2 = Sphere(o: Vec3(x: 0f, y: -100.5f, z: -1f), r: 100f, mat: Lambertian(albedo: Vec3(x: 0.8f, y: 0.8f, z: 0.0f)))
 let sphere3 = Sphere(o: Vec3(x: 1f, y: 0f, z: -1f), r: 0.5f, mat: Metalic(fuzzy: 0.1f, albedo: Vec3(x: 0.8f, y: 0.6f, z: 0.2f)))
 let sphere4 = Sphere(o: Vec3(x: -1f, y: 0f, z: -1f), r: 0.5f, mat: Dielectric(refraction: 1.5f))
 let sphere5 = Sphere(o: Vec3(x: -1f, y: 0f, z: -1f), r: -0.45f, mat: Dielectric(refraction: 1.5f))
 #let world = [sphere, sphere2]
-let world = [sphere, sphere2, sphere3, sphere4, sphere5]
+#let world = [sphere, sphere2, sphere3, sphere4, sphere5]
+let world = randomScene()
+let lookFrom = Vec3(x: -1f, y: 1f, z: 18f)
+let lookAt = Vec3(x: 0f, y: 1f, z: -1f)
+let camera = newCamera(lookFrom, lookAt)
 
 proc doSample(j, i: int32) : Vec3 =
     let u = (float32(i) + rand(1f)) / float32(cols)
     let v = (float32(j) + rand(1f)) / float32(rows)
     let ray = newRay(u, v)
+    return ray.color(world)
+
+proc color(cam: Camera, j, i: int32) : Vec3 =
+    let u = (float32(i) + rand(1f)) / float32(cols)
+    let v = (float32(j) + rand(1f)) / float32(rows)
+    let ray = cam.newRay(u, v)
     return ray.color(world)
 
 when hasThreadSupport:
@@ -78,7 +112,7 @@ for j in 0 ..< rows:
         var s = 0i32
         var col = Vec3()
         while s < nsamples:
-            let sm = doSample(j, i)
+            let sm = camera.color(j, i)
             col = col + sm
             inc s
 
