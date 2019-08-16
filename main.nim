@@ -3,8 +3,8 @@ import material
 
 let rows : int32 = 400
 let cols : int32 = 800
-const nsamples = 16
-const maxBounces = 4
+const nsamples = 128
+const maxBounces = 8
 const hasThreadSupport = compileOption("threads")
 
 template toRgb(v: Vec3) : Rgb =
@@ -50,19 +50,19 @@ proc randomScene() : seq[Sphere] =
             var center = Vec3(x: a.float32+0.9f+rand(1f), y: 0.2f, z: b.float32+0.9f+rand(1f))
             if (center - Vec3(x:4f, y: 0.2f, z:0f)).len() > 0.9f:
                 let distanceOrigin = (center - origin).len
-                center.y = center.y - 0.2f/40f * distanceOrigin
+                center.y = center.y - 0.2f/45f * distanceOrigin
                 let mat: ref Material =
                     if matProb < 0.8f:
                         Lambertian(albedo: Vec3(x: rand(1f)*rand(1f), y: rand(1f)*rand(1f), z: rand(1f)*rand(1f)))
                     elif matProb < 0.95f:
-                        Metalic(albedo: Vec3(x: 0.5f*(rand(1f)+1f), y: 0.5f*(rand(1f)+1f), z: 0.5f*(rand(1f)+1f)), fuzzy: 0.5f*rand(1f))
+                        Metalic(albedo: Vec3(x: 0.5f*(rand(1f)+1f), y: 0.5f*(rand(1f)+1f), z: 0.5f*(rand(1f)+1f)), fuzzy: 0.01f)
                     else:
                         Dielectric(refraction: 1.5f)
                 let sp = Sphere(o: center, r: 0.2f, mat: mat)
                 scene.add(sp)
     scene.add(Sphere(o: Vec3(x: 0f, y: 1f, z: 0f), r: 1f, mat: Dielectric(refraction: 1.5f)))
     scene.add(Sphere(o: Vec3(x: -4f, y: 1f, z: 0f), r: 1f, mat: Lambertian(albedo: Vec3(x: 0.4f, y: 0.2f, z: 0.1f)) ))
-    scene.add(Sphere(o: Vec3(x: 4f, y: 1f, z: 0f), r: 1f, mat: Metalic(fuzzy: 0.1f, albedo: Vec3(x: 0.7f, y: 0.6f, z: 0.5f))))
+    scene.add(Sphere(o: Vec3(x: 4f, y: 1f, z: 0f), r: 1f, mat: Metalic(fuzzy: 0.01f, albedo: Vec3(x: 0.7f, y: 0.6f, z: 0.5f))))
 
     return scene
 
