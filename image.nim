@@ -1,4 +1,4 @@
-import streams, strformat, algorithm
+import streams, strformat
 
 type
     Rgb* = tuple[r: uint8, g: uint8, b: uint8]

@@ -1,11 +1,14 @@
-import os, streams, strformat, math, v3, image, options, sequtils, random, times
+import streams, strformat, math, v3, image, options, sequtils, random, times
 import material
 
-let rows : int32 = 400
-let cols : int32 = 800
-const nsamples = 128
-const maxBounces = 8
 const hasThreadSupport = compileOption("threads")
+when hasThreadSupport:
+    import threadpool
+
+let rows : int32 = 600
+let cols : int32 = 1200
+const nsamples {.intdefine.} = 64
+const maxBounces = 8
 
 template toRgb(v: Vec3) : Rgb =
     let r = uint8(255.99f32 * v.x)
@@ -66,11 +69,12 @@ proc randomScene() : seq[Sphere] =
 
     return scene
 
-let sphere = Sphere(o: Vec3(x: 0f, y: 0f, z: -1f), r: 0.5f, mat: Lambertian(albedo: Vec3(x: 0.1f, y: 0.2f, z: 0.5f )))
-let sphere2 = Sphere(o: Vec3(x: 0f, y: -100.5f, z: -1f), r: 100f, mat: Lambertian(albedo: Vec3(x: 0.8f, y: 0.8f, z: 0.0f)))
-let sphere3 = Sphere(o: Vec3(x: 1f, y: 0f, z: -1f), r: 0.5f, mat: Metalic(fuzzy: 0.1f, albedo: Vec3(x: 0.8f, y: 0.6f, z: 0.2f)))
-let sphere4 = Sphere(o: Vec3(x: -1f, y: 0f, z: -1f), r: 0.5f, mat: Dielectric(refraction: 1.5f))
-let sphere5 = Sphere(o: Vec3(x: -1f, y: 0f, z: -1f), r: -0.45f, mat: Dielectric(refraction: 1.5f))
+when defined simpleScene:
+    let sphere = Sphere(o: Vec3(x: 0f, y: 0f, z: -1f), r: 0.5f, mat: Lambertian(albedo: Vec3(x: 0.1f, y: 0.2f, z: 0.5f )))
+    let sphere2 = Sphere(o: Vec3(x: 0f, y: -100.5f, z: -1f), r: 100f, mat: Lambertian(albedo: Vec3(x: 0.8f, y: 0.8f, z: 0.0f)))
+    let sphere3 = Sphere(o: Vec3(x: 1f, y: 0f, z: -1f), r: 0.5f, mat: Metalic(fuzzy: 0.1f, albedo: Vec3(x: 0.8f, y: 0.6f, z: 0.2f)))
+    let sphere4 = Sphere(o: Vec3(x: -1f, y: 0f, z: -1f), r: 0.5f, mat: Dielectric(refraction: 1.5f))
+    let sphere5 = Sphere(o: Vec3(x: -1f, y: 0f, z: -1f), r: -0.45f, mat: Dielectric(refraction: 1.5f))
 #let world = [sphere, sphere2]
 #let world = [sphere, sphere2, sphere3, sphere4, sphere5]
 let world = randomScene()
@@ -90,33 +94,22 @@ proc color(cam: Camera, j, i: int32) : Vec3 =
     let ray = cam.newRay(u, v)
     return ray.color(world)
 
-when hasThreadSupport:
-    import threadpool
-    proc sample4 (j, i: int32): tuple[a: Vec3, b: Vec3, c: Vec3, d: Vec3] =
-        let st0 = spawn doSample(j, i)
-        let st1 = spawn doSample(j, i)
-        let st2 = spawn doSample(j, i)
-        let st3 = spawn doSample(j, i)
-        result = (^st0, ^st1, ^st2, ^st3)
-else:
-    proc sample4 (j, i: int32): tuple[a: Vec3, b: Vec3, c: Vec3, d: Vec3] =
-        let st0 = doSample(j, i)
-        let st1 = doSample(j, i)
-        let st2 = doSample(j, i)
-        let st3 = doSample(j, i)
-        result = (st0, st1, st2, st3)
-
 var pixels = newSeq[Rgb]()
 for j in 0 ..< rows:
     for i in 0 ..< cols:
-        var s = 0i32
-        var col = Vec3()
-        while s < nsamples:
-            let sm = camera.color(j, i)
-            col = col + sm
-            inc s
-
-        col = col / nsamples.float32
+        var cols = newSeq[Vec3](nsamples)
+        #NOT WORKING Error: (s)..(s) not disjoint from (s)..(s)
+        when hasThreadSupport:
+            {.push experimental: "parallel".}
+            {.push checks: off.}
+            parallel:
+                for s in 0 .. cols.high:
+                    cols[s] = spawn camera.color(j, i)
+            {.pop.}
+        else:
+            for s in 0 .. cols.high:
+                cols[s] = camera.color(j, i)
+        let col = cols.foldr(a + b) / nsamples.float32
         let rgb = col.toGamma2().toRgb()
         pixels.add rgb
         if int(cpuTime()*1000) mod 15 == 0:

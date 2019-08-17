@@ -172,7 +172,7 @@ proc schlick* (cosine: float32, refraction: float32) : float32 =
 proc newCamera*(lookFrom: Vec3, lookAt: Vec3) : Camera =
     let down = Vec3(x: 0f, y: 1f, z: 0f)
     let vFov = 20f
-    let aperture = 2f
+    let aperture = 0.01f
     let aspect = 2f
     let dist = lookFrom - lookAt
     let w = dist.normalize()
@@ -194,13 +194,13 @@ proc newCamera*(lookFrom: Vec3, lookAt: Vec3) : Camera =
       hor: horz,
       vert: vertz)
 
-proc newRay*(cam: Camera, u, v: float32) : Ray =
+proc newRayNoFov*(cam: Camera, u, v: float32) : Ray =
     let uh = cam.hor * u
     let vv = cam.vert * v - cam.origin
     let uv = uh + vv
     result = Ray(a: cam.origin, b: cam.upLeftCorner + uv)
 
-proc newRay1*(cam: Camera, u, v: float32) : Ray =
+proc newRay*(cam: Camera, u, v: float32) : Ray =
     let rd = randInDisk() * cam.lensRadius
     let offset = cam.u * rd.x + cam.v * rd.y
     let uh = cam.hor * u
