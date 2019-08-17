@@ -92,32 +92,39 @@ proc newHitData(ray: Ray, t: float, s: Sphere) : HitData =
     let normal = point - s.o
     result = HitData( point: point, normal: normal / s.r, distance: t, material: s.mat)
 
-proc hit*(ray: Ray, s: Sphere, margin: MinMax = (0.01f, float32.high)) : Option[HitData] =
+proc getResult(ray: Ray, s: Sphere, margin: MinMax) : (bool, HitData) =
     let oc = ray.a - s.o
     let a = ray.b.dot(ray.b)
     let b = oc.dot(ray.b)
     let c = oc.dot(oc) - s.r*s.r
     let res = b*b - a*c
-    result = none(HitData)
-    if res > 0:
-        let tminus = (-b - sqrt(res)) / a
+    if res > 0f:
+        let sqres = sqrt(res)
+        let tminus = (-b - sqres) / a
+        let tplus = (-b + sqres) / a
         if tminus > margin.min and tminus < margin.max:
-            let hd = newHitData(ray, tminus, s)
-            result = some(hd)
+            return (true, newHitData(ray, tminus, s))
         else:
-            let tplus = (-b + sqrt(res)) / a
             if tplus > margin.min and tplus < margin.max:
-                let hd = newHitData(ray, tplus, s)
-                result = some(hd)
+                return (true, newHitData(ray, tplus, s))
+        #echo "WTF!", tplus, tminus
+    return (false, HitData())
+
+proc hit*(ray: Ray, s: Sphere, margin: MinMax = (0.01f, float32.high)) : Option[HitData] =
+    let (res, hd) = getResult(ray, s, margin)
+    if res:
+        return some(hd)
+
  
 proc hit*(ray: Ray, list: openarray[Hitable], margin: MinMax = (0.01f, float32.high)) : Option[HitData] =
     var closest = margin.max
-    result = none(HitData)
     for h in list:
-        let hd = ray.hit(h, (margin.min, closest))
-        if hd.isSome:
-            result = hd
-            closest = hd.get().distance
+        let (res, hd) = ray.getResult(h, (margin.min, closest))
+        if res:
+            closest = hd.distance
+            result = some(hd)
+            
+
 
 
 proc newRay*(u: float32, v: float32) : Ray =
@@ -172,7 +179,7 @@ proc schlick* (cosine: float32, refraction: float32) : float32 =
 proc newCamera*(lookFrom: Vec3, lookAt: Vec3) : Camera =
     let down = Vec3(x: 0f, y: 1f, z: 0f)
     let vFov = 20f
-    let aperture = 0.01f
+    let aperture = 0.005f
     let aspect = 2f
     let dist = lookFrom - lookAt
     let w = dist.normalize()

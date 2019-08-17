@@ -1,14 +1,20 @@
 import streams, strformat, math, v3, image, options, sequtils, random, times
 import material
 
+when compileOption("profiler"):
+    import nimprof
+
 const hasThreadSupport = compileOption("threads")
 when hasThreadSupport:
     import threadpool
 
 let rows : int32 = 600
 let cols : int32 = 1200
+const threads {.intdefine.} = 4
 const nsamples {.intdefine.} = 64
-const maxBounces = 8
+const maxBounces = 50
+
+assert (nsamples mod threads == 0)
 
 template toRgb(v: Vec3) : Rgb =
     let r = uint8(255.99f32 * v.x)
@@ -88,33 +94,39 @@ proc doSample(j, i: int32) : Vec3 =
     let ray = newRay(u, v)
     return ray.color(world)
 
-proc color(cam: Camera, j, i: int32) : Vec3 =
+proc color(cam: Camera, j, i: int32) : Vec3 {.gcsafe.} =
     let u = (float32(i) + rand(1f)) / float32(cols)
     let v = (float32(j) + rand(1f)) / float32(rows)
     let ray = cam.newRay(u, v)
     return ray.color(world)
 
+proc samples(n: int, cam: Camera, j, i: int32) : seq[Vec3] =
+    var samples = newSeq[Vec3](n)
+    for s1 in 0 .. samples.high:
+        samples[s1] = cam.color(j, i)
+    return samples
+
 var pixels = newSeq[Rgb]()
 for j in 0 ..< rows:
     for i in 0 ..< cols:
-        var cols = newSeq[Vec3](nsamples)
-        #NOT WORKING Error: (s)..(s) not disjoint from (s)..(s)
         when hasThreadSupport:
-            {.push experimental: "parallel".}
-            {.push checks: off.}
-            parallel:
-                for s in 0 .. cols.high:
-                    cols[s] = spawn camera.color(j, i)
-            {.pop.}
+            var colsth = newSeq[FlowVar[seq[Vec3]]](threads)
+            for th in 0 ..< threads:
+                colsth[th] = spawn samples(nsamples div threads, camera, j, i)
+            var samples = newSeq[Vec3]()
+            for th in 0 ..< threads:
+                samples = samples.concat(^colsth[th])
         else:
-            for s in 0 .. cols.high:
-                cols[s] = camera.color(j, i)
-        let col = cols.foldr(a + b) / nsamples.float32
-        let rgb = col.toGamma2().toRgb()
+            var samples = newSeq[Vec3](nsamples)
+            for s in 0 .. samples.high:
+                samples[s] = camera.color(j, i)
+        let color = samples.foldr(a + b) / nsamples.float32
+        let rgb = color.toGamma2().toRgb()
         pixels.add rgb
-        if int(cpuTime()*1000) mod 15 == 0:
-            stdout.write($j, "                 ", "\r")
-            stdout.flushFile()
+        when defined showProgress:
+            if int(cpuTime()*1000) mod 15 == 0:
+                stdout.write($j, "                 ", "\r")
+                stdout.flushFile()
 
 #write file
 let tga = newTarga(cols, rows, pixels)
