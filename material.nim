@@ -1,28 +1,20 @@
 import v3, options, random
 
-type
-  Lambertian* = ref object of Material
-    albedo*: Vec3
-  Dielectric* = ref object of Material
-    refraction*: float32
-  Metalic* = ref object of Material
-    fuzzy*: float32
-    albedo*: Vec3
+proc Lambertian*(albedo: Vec3) : Material =
+  Material(kind: mkLambertian, albedo: albedo)
 
-method scatter*(mat: ref Material, ray: Ray, hitdata: HitData) : Option[Ray] {.base.} =
-  echo mat.repr
+proc Metalic*(albedo: Vec3, fuzzy: float32) : Material =
+  Material(kind: mkMetalic, albedo: albedo, fuzzy: fuzzy)
 
-method attenuation*(mat: ref Material) : Vec3{.base.} =
-  unit
+proc Dielectric*(refraction: float32) : Material =
+  Material(kind: mkDielectric, albedo: unit, refraction: refraction)
 
-method scatter*(mat: Lambertian, ray: Ray, hitdata: HitData) : Option[Ray] =
+proc scatterLambertian(mat: Material, ray: Ray, hitdata: HitData) : Option[Ray] =
   let target = (hitdata.point + hitdata.normal) + randInSphere()
   let scattered = Ray(a: hitdata.point, b: target - hitdata.point)
   result = some(scattered)
 
-method attenuation*(mat: Lambertian) : Vec3 = mat.albedo
-
-method scatter*(mat: Dielectric, ray: Ray, hitdata: HitData) : Option[Ray] =
+proc scatterDielectric(mat: Material, ray: Ray, hitdata: HitData) : Option[Ray] =
   let reflected = ray.b.reflect(hitdata.normal)
   var outNormal = hitdata.normal
   var niOverNt = 1f / mat.refraction
@@ -38,11 +30,9 @@ method scatter*(mat: Dielectric, ray: Ray, hitdata: HitData) : Option[Ray] =
       let scatteredRefract = Ray(a: hitdata.point, b: refracted.get())
       return some(scatteredRefract)
   let scatteredReflect = Ray(a: hitdata.point, b: reflected)
-  result = some(scatteredReflect) 
+  result = some(scatteredReflect)
 
-method attenuation*(mat: Dielectric) : Vec3 = unit
-
-method scatter*(mat: Metalic, ray: Ray, hitdata: HitData) : Option[Ray] =
+proc scatterMetalic(mat: Material, ray: Ray, hitdata: HitData) : Option[Ray] =
   let reflected = ray.b.normalize().reflect(hitdata.normal)
   let scattered = Ray(a: hitdata.point, b: reflected + randInSphere() * mat.fuzzy)
   if scattered.b.dot(hitdata.normal) > 0:
@@ -50,4 +40,11 @@ method scatter*(mat: Metalic, ray: Ray, hitdata: HitData) : Option[Ray] =
   else:
     result = none(Ray)
 
-method attenuation*(mat: Metalic) : Vec3 = mat.albedo
+proc scatter*(mat: Material, ray: Ray, hitdata: HitData) : Option[Ray] =
+  case mat.kind
+  of mkLambertian: scatterLambertian(mat, ray, hitdata)
+  of mkMetalic: scatterMetalic(mat, ray, hitdata)
+  of mkDielectric: scatterDielectric(mat, ray, hitdata)
+
+# Dielectric's albedo is unit, as its old attenuation method returned
+proc attenuation*(mat: Material) : Vec3 = mat.albedo

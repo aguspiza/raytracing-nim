@@ -10,16 +10,25 @@ type
         var hitdata: HitData
         var scattered = mat.scatter(ray, hitdata)
         scattered is Option[Ray]
-    Material* = object of RootObj
+    MaterialKind* = enum
+        mkLambertian, mkMetalic, mkDielectric
+    # a plain value, not a ref: the world holds no GC'ed memory, so worker
+    # threads can read it without racing on reference counts
+    Material* = object
+        albedo*: Vec3
+        case kind*: MaterialKind
+        of mkLambertian: discard
+        of mkMetalic: fuzzy*: float32
+        of mkDielectric: refraction*: float32
     Sphere* = object
         o*: Vec3
         r*: float32
-        mat*: ref Material
+        mat*: Material
     HitData* = object
         point*: Vec3
         normal*: Vec3
         distance*: float32
-        material*: ref Material
+        material*: Material
     MinMax* = tuple[min: float32, max: float32]
     Hitable* = concept h
         var ray: Ray
@@ -67,7 +76,7 @@ template dot*(v1: Vec3, v2: Vec3 ) : float32 =
     v1.x * v2.x + v1.y * v2.y + v1.z * v2.z
 
 template cross*(v1: Vec3, v2: Vec3 ) : Vec3 =
-    Vec3(x: v1.y * v2.z - v1.z * v2.y, y: -v1.x * v2.z - v1.z * v2.x, z: v1.x * v2.y - v1.y * v2.x )
+    Vec3(x: v1.y * v2.z - v1.z * v2.y, y: v1.z * v2.x - v1.x * v2.z, z: v1.x * v2.y - v1.y * v2.x )
 
 template sqlen*(vec: Vec3) : float32 =
     vec.x * vec.x + vec.y * vec.y + vec.z * vec.z
@@ -177,21 +186,22 @@ proc schlick* (cosine: float32, refraction: float32) : float32 =
   result = r + (1f - r) * pow((1f - cosine), 5)
 
 proc newCamera*(lookFrom: Vec3, lookAt: Vec3) : Camera =
-    let down = Vec3(x: 0f, y: 1f, z: 0f)
+    let vup = Vec3(x: 0f, y: 1f, z: 0f)
     let vFov = 20f
     let aperture = 0.005f
     let aspect = 2f
     let dist = lookFrom - lookAt
     let w = dist.normalize()
-    let u = down.cross(w).normalize()
-    let v = w.cross(u)
+    let u = vup.cross(w).normalize()
+    let v = w.cross(u) # up
     let focusDist = dist.len()
     let tetha = vFov * PI / 180
     let halfHeight = tan(tetha/2)
     let halfWidth = aspect * halfHeight
-    let leftCorner = lookFrom - u * halfWidth * focusDist - v * halfHeight * focusDist - w * focusDist
+    let leftCorner = lookFrom - u * halfWidth * focusDist + v * halfHeight * focusDist - w * focusDist
     let horz = u*halfWidth*focusDist*2
-    let vertz = v*halfHeight*focusDist*2
+    # rows go top to bottom, so the vertical span points down
+    let vertz = -v*halfHeight*focusDist*2
     result = Camera(origin: lookfrom,
       upLeftCorner: leftCorner,
       lensRadius: aperture/2,

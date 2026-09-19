@@ -1,4 +1,4 @@
-import streams, strformat, math, v3, image, options, sequtils, random, times
+import streams, strformat, math, v3, image, options, random, times
 import material
 
 when compileOption("profiler"):
@@ -10,11 +10,8 @@ when hasThreadSupport:
 
 let rows : int32 = 600
 let cols : int32 = 1200
-const threads {.intdefine.} = 4
 const nsamples {.intdefine.} = 64
 const maxBounces = 50
-
-assert (nsamples mod threads == 0)
 
 template toRgb(v: Vec3) : Rgb =
     let r = uint8(255.99f32 * v.x)
@@ -52,7 +49,7 @@ proc color (ray: Ray, world: openarray[Hitable]) : Vec3 =
     result = result * newRay.skyColor()
 
 proc randomScene() : seq[Sphere] =
-    var scene :seq[Sphere] =  @[Sphere(o: Vec3(x: 0f, y: -1000f, z: 0), r: 1000f, mat: Lambertian(albedo: Vec3(x: 0.5f, y: 0.5f, z: 0.5f )))]
+    var scene :seq[Sphere] =  @[Sphere(o: Vec3(x: 0f, y: -1000f, z: 0), r: 1000f, mat: Lambertian(albedo = Vec3(x: 0.5f, y: 0.5f, z: 0.5f )))]
     for a in -11 ..< 11:
         for b in -11 ..< 11:
             let matProb = rand(1f)
@@ -60,27 +57,27 @@ proc randomScene() : seq[Sphere] =
             if (center - Vec3(x:4f, y: 0.2f, z:0f)).len() > 0.9f:
                 let distanceOrigin = (center - origin).len
                 center.y = center.y - 0.2f/45f * distanceOrigin
-                let mat: ref Material =
+                let mat: Material =
                     if matProb < 0.8f:
-                        Lambertian(albedo: Vec3(x: rand(1f)*rand(1f), y: rand(1f)*rand(1f), z: rand(1f)*rand(1f)))
+                        Lambertian(albedo = Vec3(x: rand(1f)*rand(1f), y: rand(1f)*rand(1f), z: rand(1f)*rand(1f)))
                     elif matProb < 0.95f:
-                        Metalic(albedo: Vec3(x: 0.5f*(rand(1f)+1f), y: 0.5f*(rand(1f)+1f), z: 0.5f*(rand(1f)+1f)), fuzzy: 0.01f)
+                        Metalic(albedo = Vec3(x: 0.5f*(rand(1f)+1f), y: 0.5f*(rand(1f)+1f), z: 0.5f*(rand(1f)+1f)), fuzzy = 0.01f)
                     else:
-                        Dielectric(refraction: 1.5f)
+                        Dielectric(refraction = 1.5f)
                 let sp = Sphere(o: center, r: 0.2f, mat: mat)
                 scene.add(sp)
-    scene.add(Sphere(o: Vec3(x: 0f, y: 1f, z: 0f), r: 1f, mat: Dielectric(refraction: 1.5f)))
-    scene.add(Sphere(o: Vec3(x: -4f, y: 1f, z: 0f), r: 1f, mat: Lambertian(albedo: Vec3(x: 0.4f, y: 0.2f, z: 0.1f)) ))
-    scene.add(Sphere(o: Vec3(x: 4f, y: 1f, z: 0f), r: 1f, mat: Metalic(fuzzy: 0.01f, albedo: Vec3(x: 0.7f, y: 0.6f, z: 0.5f))))
+    scene.add(Sphere(o: Vec3(x: 0f, y: 1f, z: 0f), r: 1f, mat: Dielectric(refraction = 1.5f)))
+    scene.add(Sphere(o: Vec3(x: -4f, y: 1f, z: 0f), r: 1f, mat: Lambertian(albedo = Vec3(x: 0.4f, y: 0.2f, z: 0.1f)) ))
+    scene.add(Sphere(o: Vec3(x: 4f, y: 1f, z: 0f), r: 1f, mat: Metalic(fuzzy = 0.01f, albedo = Vec3(x: 0.7f, y: 0.6f, z: 0.5f))))
 
     return scene
 
 when defined simpleScene:
-    let sphere = Sphere(o: Vec3(x: 0f, y: 0f, z: -1f), r: 0.5f, mat: Lambertian(albedo: Vec3(x: 0.1f, y: 0.2f, z: 0.5f )))
-    let sphere2 = Sphere(o: Vec3(x: 0f, y: -100.5f, z: -1f), r: 100f, mat: Lambertian(albedo: Vec3(x: 0.8f, y: 0.8f, z: 0.0f)))
-    let sphere3 = Sphere(o: Vec3(x: 1f, y: 0f, z: -1f), r: 0.5f, mat: Metalic(fuzzy: 0.1f, albedo: Vec3(x: 0.8f, y: 0.6f, z: 0.2f)))
-    let sphere4 = Sphere(o: Vec3(x: -1f, y: 0f, z: -1f), r: 0.5f, mat: Dielectric(refraction: 1.5f))
-    let sphere5 = Sphere(o: Vec3(x: -1f, y: 0f, z: -1f), r: -0.45f, mat: Dielectric(refraction: 1.5f))
+    let sphere = Sphere(o: Vec3(x: 0f, y: 0f, z: -1f), r: 0.5f, mat: Lambertian(albedo = Vec3(x: 0.1f, y: 0.2f, z: 0.5f )))
+    let sphere2 = Sphere(o: Vec3(x: 0f, y: -100.5f, z: -1f), r: 100f, mat: Lambertian(albedo = Vec3(x: 0.8f, y: 0.8f, z: 0.0f)))
+    let sphere3 = Sphere(o: Vec3(x: 1f, y: 0f, z: -1f), r: 0.5f, mat: Metalic(fuzzy = 0.1f, albedo = Vec3(x: 0.8f, y: 0.6f, z: 0.2f)))
+    let sphere4 = Sphere(o: Vec3(x: -1f, y: 0f, z: -1f), r: 0.5f, mat: Dielectric(refraction = 1.5f))
+    let sphere5 = Sphere(o: Vec3(x: -1f, y: 0f, z: -1f), r: -0.45f, mat: Dielectric(refraction = 1.5f))
 #let world = [sphere, sphere2]
 #let world = [sphere, sphere2, sphere3, sphere4, sphere5]
 let world = randomScene()
@@ -94,39 +91,43 @@ proc doSample(j, i: int32) : Vec3 =
     let ray = newRay(u, v)
     return ray.color(world)
 
-proc color(cam: Camera, j, i: int32) : Vec3 {.gcsafe.} =
+# world is passed in, not read from the global: a spawned proc must be
+# gcsafe. A ptr shares the read-only scene without copying it per spawn.
+proc color(cam: Camera, world: ptr seq[Sphere], j, i: int32) : Vec3 {.gcsafe.} =
     let u = (float32(i) + rand(1f)) / float32(cols)
     let v = (float32(j) + rand(1f)) / float32(rows)
     let ray = cam.newRay(u, v)
-    return ray.color(world)
+    return ray.color(world[])
 
-proc samples(n: int, cam: Camera, j, i: int32) : seq[Vec3] =
-    var samples = newSeq[Vec3](n)
-    for s1 in 0 .. samples.high:
-        samples[s1] = cam.color(j, i)
-    return samples
+# one horizontal line of the image: every pixel, all its samples
+proc renderRow(cam: Camera, world: ptr seq[Sphere], j: int32) : seq[Rgb] {.gcsafe.} =
+    result = newSeq[Rgb](cols)
+    for i in 0'i32 ..< cols:
+        var sum = Vec3(x: 0f, y: 0f, z: 0f)
+        for s in 0 ..< nsamples:
+            # bound first: the `+` template would repeat the call per component
+            let sample = cam.color(world, j, i)
+            sum = sum + sample
+        result[i] = (sum / nsamples.float32).toGamma2().toRgb()
+
+proc showRow(j: int32) =
+    when defined showProgress:
+        stdout.write($j, "                 ", "\r")
+        stdout.flushFile()
 
 var pixels = newSeq[Rgb]()
-for j in 0 ..< rows:
-    for i in 0 ..< cols:
-        when hasThreadSupport:
-            var colsth = newSeq[FlowVar[seq[Vec3]]](threads)
-            for th in 0 ..< threads:
-                colsth[th] = spawn samples(nsamples div threads, camera, j, i)
-            var samples = newSeq[Vec3]()
-            for th in 0 ..< threads:
-                samples = samples.concat(^colsth[th])
-        else:
-            var samples = newSeq[Vec3](nsamples)
-            for s in 0 .. samples.high:
-                samples[s] = camera.color(j, i)
-        let color = samples.foldr(a + b) / nsamples.float32
-        let rgb = color.toGamma2().toRgb()
-        pixels.add rgb
-        when defined showProgress:
-            if int(cpuTime()*1000) mod 15 == 0:
-                stdout.write($j, "                 ", "\r")
-                stdout.flushFile()
+when hasThreadSupport:
+    # one task per line; the lines are gathered back in order
+    var lines = newSeq[FlowVar[seq[Rgb]]](rows)
+    for j in 0'i32 ..< rows:
+        lines[j] = spawn renderRow(camera, addr world, j)
+    for j in 0'i32 ..< rows:
+        pixels.add(^lines[j])
+        showRow(j)
+else:
+    for j in 0'i32 ..< rows:
+        pixels.add(renderRow(camera, addr world, j))
+        showRow(j)
 
 #write file
 let tga = newTarga(cols, rows, pixels)
