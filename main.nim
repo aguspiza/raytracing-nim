@@ -68,11 +68,10 @@ func rngHash(x: uint32): uint32 =
   let b = (a xor (a shr 15)) * 2221713035'u32
   b xor (b shr 16)
 
-func next(s0: uint32): uint32 {.inline.} =
-  var s = s0
-  s = s xor (s shl 13)
-  s = s xor (s shr 17)
-  s xor (s shl 5)
+func next(s: uint32): uint32 {.inline.} =
+  result = s xor (s shl 13)
+  result = result xor (result shr 17)
+  result = result xor (result shl 5)
 
 func next2(s: uint32): uint32 {.inline.} = next(next(s))
 func next3(s: uint32): uint32 {.inline.} = next(next(next(s)))
@@ -91,21 +90,19 @@ func vec2Of(s: uint32): Vec3 {.inline.} = vec(2f * u(s) - 1f, 2f * u(next(s)) - 
 # randInSphere and randInDisk: the state whose point is accepted. As in the
 # old v3.nim, a point is accepted when it lies outside the unit ball, and
 # the search gives up after 64 redraws.
-func inSphere(s0: uint32): uint32 =
-  var s = s0
+func inSphere(s: uint32): uint32 =
+  result = s
   for _ in 0 ..< 64:
-    let p = vec3Of(s)
-    if dot(p, p) >= 1f: return s
-    s = next3(s)
-  s
+    let p = vec3Of(result)
+    if dot(p, p) >= 1f: return
+    result = next3(result)
 
-func inDisk(s0: uint32): uint32 =
-  var s = s0
+func inDisk(s: uint32): uint32 =
+  result = s
   for _ in 0 ..< 64:
-    let p = vec2Of(s)
-    if dot(p, p) >= 1f: return s
-    s = next2(s)
-  s
+    let p = vec2Of(result)
+    if dot(p, p) >= 1f: return
+    result = next2(result)
 
 # Camera
 # ------
@@ -164,9 +161,9 @@ func pickMat(mp: float32, h: uint32): Mat =
 proc buildScene() =
   add(vec(0f, -1000f, 0f), 1000f, Mat(kind: Lambertian, albedo: vec(0.5f, 0.5f, 0.5f)))
   let tilt = 0.2f32
-  var k = 484'u32
-  while k > 0:
-    dec k
+  # an int counter: countdown on uint32 never stops at 0
+  for c in countdown(483, 0):
+    let k = uint32(c)
     # the 22 x 22 grid, cell k at (k div 22 - 11, k mod 22 - 11)
     let h = k * 16 + 1000
     let mp = at(h, 0)
@@ -187,7 +184,7 @@ proc buildScene() =
 # Same arithmetic as Sphere.hit in Bend, in two passes. The first has no
 # branches, so the C compiler vectorizes it: qb and disc for every sphere.
 # The second only takes the sqrt of the few with disc > 0.
-proc hit(r: Ray): (int, float32) =
+proc hit(r: Ray): tuple[i: int, t: float32] =
   var qbs {.noinit.}, discs {.noinit.}: array[MaxSpheres, float32]
   let a = r.a
   let b = r.b
@@ -200,23 +197,19 @@ proc hit(r: Ray): (int, float32) =
     let qc = cx * cx + cy * cy + cz * cz - rr[i]
     qbs[i] = qb
     discs[i] = qb * qb - qa * qc
-  var closest = Far
-  var best = -1
+  result = (-1, Far)
   for i in 0 ..< n:
     let disc = discs[i]
     if disc > 0f:
       let qb = qbs[i]
       let sq = sqrt(disc)
       let tm = (0f - qb - sq) / qa
-      if tm > TMin and tm < closest:
-        closest = tm
-        best = i
+      if tm > TMin and tm < result.t:
+        result = (i, tm)
       else:
         let tp = (0f - qb + sq) / qa
-        if tp > TMin and tp < closest:
-          closest = tp
-          best = i
-  (best, closest)
+        if tp > TMin and tp < result.t:
+          result = (i, tp)
 
 # Color
 # -----
