@@ -6,7 +6,16 @@ raytracing in a weekend with nim
 `main.nim` here is laid out as
 [raytracing-goose](https://github.com/aguspiza/raytracing-goose), and writes
 the same `ray.tga` as it and as
-[raytracing-bend2](https://github.com/aguspiza/raytracing-bend2), byte for byte:
+[raytracing-bend2](https://github.com/aguspiza/raytracing-bend2), byte for byte.
+
+![1024 samples per pixel](ray1024.png)
+
+1024 samples per pixel, 92 s on 16 threads. The noise falls with the square
+root of the samples; the same patch at 64, 256 and 1024 samples, zoomed 2x:
+
+![64, 256 and 1024 samples per pixel](spp_64_256_1024.png)
+
+What the branch changes:
 
 - the random numbers of the Bend port (a xorshift32 state seeded per pixel),
   so all three render the same image;
