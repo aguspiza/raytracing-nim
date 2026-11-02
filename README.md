@@ -1,6 +1,49 @@
 # raytracing-nim
 raytracing in a weekend with nim
 
+## Branch `optimized`
+
+`main.nim` here is laid out as
+[raytracing-goose](https://github.com/aguspiza/raytracing-goose), and writes
+the same `ray.tga` as it and as
+[raytracing-bend2](https://github.com/aguspiza/raytracing-bend2), byte for byte:
+
+- the random numbers of the Bend port (a xorshift32 state seeded per pixel),
+  so all three render the same image;
+- the spheres as four flat `float32` arrays, and a hit test in two passes: the
+  first has no branches and gcc vectorizes it with AVX, the second takes the
+  `sqrt` only for the spheres the ray can hit;
+- worker threads take rows from an atomic counter and send each finished row
+  back on a `Channel`;
+- `config.nims` builds with `-d:danger --panics:on --passC:-march=native`.
+  `--panics:on` is worth 15%: without it, every call is followed by a check of
+  the thread-local error flag. `main.nim` turns off fused multiply-add, or a few
+  pixels would differ from the Goose and Bend images in the low bits.
+
+```
+nim c -o:ray main.nim
+./ray                  # 64 samples per pixel -> ray.tga
+./ray 16 ppm           # 16 samples per pixel, also write ray.ppm
+./ray 16 --threads 1   # cap the worker threads (default: every CPU)
+./test.sh              # checks the image against the Goose and Bend one
+```
+
+1200x600, WSL2 on a 16-thread Ryzen 7 5700U, Nim 2.2.10 and gcc 13.3,
+median of 3 runs:
+
+| 4 samples per pixel          | This branch | Goose  | `fix-threads-and-cross` |
+| ---------------------------- | ----------- | ------ | ----------------------- |
+| 1 thread                     | 2.2 s       | 2.2 s  | 18.9 s                  |
+| 16 threads                   | 0.38 s      | 0.34 s | 3.2 s                   |
+| 64 samples, 16 threads       | 5.6 s       | 5.9 s  | 52.5 s                  |
+| Peak RAM                     | 11 MB       | 6 MB   | 14 MB                   |
+| Build, clean (compiler RAM)  | 2.2 s (89 MB) | 0.9 s (60 MB) | 2.3 s (87 MB) |
+| Binary, stripped             | 93 KB       | 47 KB  | 134 KB                  |
+
+Writing each row straight into the image through a
+`ptr UncheckedArray[Rgb]` instead of the channel saves under 3%, within the
+noise between runs.
+
 http://www.realtimerendering.com/raytracing/Ray%20Tracing%20in%20a%20Weekend.pdf
 
 ## Performance
